@@ -1,4 +1,4 @@
-import { Icons,  } from "@/components/icons";
+import { Icons, } from "@/components/icons";
 import { ResumeIcon } from "@radix-ui/react-icons";
 import { Code2Icon, NotebookIcon } from "lucide-react";
 
@@ -11,9 +11,9 @@ export const DATA = {
   location: "Thane, Maharashtra",
   locationLink: "https://www.google.com/maps/place/thane",
   description:
-    "Final-year CSE student with student with proven expertise in building scalable web applications, cross-platform mobile apps, and cloud-native solutions through 4 successful IT industry internships and hackathon participations.",
+    "Software Development Engineer with hands-on experience in Full-Stack Development, Backend Engineering, Cloud Technologies, and AI-powered applications. Skilled in Java, Spring Boot, React, Next.js, Node.js, TypeScript, MongoDB, Docker, Kubernetes, and AWS. Passionate about building scalable systems, solving complex engineering challenges, and continuously learning emerging technologies to deliver high-quality software solutions.",
   summary:
-    "As a passionate Developer, I thrive on building innovative technology solutions. With lumpsome of hands-on experience working with React, Node.js, and MongoDB, My technical toolkit has expanded to include React Native and flutter for mobile development and Javascript for backend programming, reflecting my commitment to continuous learning and technological growth ",
+    "Software Developer passionate about building scalable full-stack applications, microservices, and AI-powered solutions. Experienced with Java, Spring Boot, React, Next.js, Node.js, TypeScript, MongoDB, Docker, Kubernetes, and AWS. Currently focused on System Design, DSA, and modern AI technologies while creating impactful software that solves real-world problems.",
   avatarUrl: "/me.png",
   skills: [
     "Next.js",
@@ -56,7 +56,7 @@ export const DATA = {
         icon: Icons.linkedin,
         navbar: true,
       },
-      X:{
+      X: {
         name: "X",
         url: "https://x.com/AniruddhNagare",
         icon: Icons.x,
@@ -69,7 +69,7 @@ export const DATA = {
         icon: Icons.LeetCode,
         navbar: true,
       },
-      Codeforces:{
+      Codeforces: {
         name: "Codeforce",
         url: "https://codeforces.com/profile/codebyanii",
         icon: Icons.codeforces,
@@ -200,11 +200,54 @@ export const DATA = {
   ],
   projects: [
     {
+      title: "BidWise - Microservices Auction Platform",
+      href: "https://bidwise-frontend.vercel.app/login",
+      dates: "2025",
+      active: true,
+      description:
+        "Built a microservices-based online auction platform enabling users to create auctions, upload product images to AWS S3, place real-time bids, process payments via Razorpay, and receive email notifications. Features an API Gateway for centralized routing, JWT-based authentication, and Redis caching for high performance.",
+      technologies: [
+        "React.js",
+        "Java 17",
+        "Spring Boot",
+        "Spring Security",
+        "JWT",
+        "PostgreSQL",
+        "Redis",
+        "AWS S3",
+        "Razorpay",
+        "Docker",
+        "Docker Compose",
+        "Nginx",
+        "Maven",
+        "Gmail SMTP",
+      ],
+      links: [
+        {
+          type: "Source",
+          href: "https://github.com/ANNI69/bidwise-backend",
+          icon: <Icons.github className="size-3" />,
+        },
+        {
+          type: "Live Demo",
+          href: "https://bidwise-frontend.vercel.app",
+          icon: <Icons.globe className="size-3" />,
+        },
+        {
+          type: "Post",
+          href: "https://x.com/AniruddhNagare/status/2052702638496686442?s=20",
+          icon: <Icons.x className="size-3" />,
+        },
+      ],
+      image: "/bidwise.png",
+      video: "",
+    },
+    {
       title: "Collaborative Word Editor Using Livebloacks",
       href: "https://github.com/ANNI69/DocSync.git",
       dates: "June 2025 - July 2025",
       active: true,
-      description:"Developed a real-time collaborative word editor using Liveblocks, Next.js, and Typescript. This project allows multiple users to edit documents simultaneously, with changes reflected in real-time across all clients. It showcases the power of Liveblocks for building collaborative applications.",
+      description: "Developed a real-time collaborative word editor using Liveblocks, Next.js, and Typescript. This project allows multiple users to edit documents simultaneously, with changes reflected in real-time across all clients. It showcases the power of Liveblocks for building collaborative applications.",
       technologies: [
         "Next.js",
         "Typescript",
@@ -236,15 +279,52 @@ export const DATA = {
           icon: <Icons.blog className="size-3" />,
         },
       ],
-      image: "https://i.ibb.co/cM58JLL/docsync.png",
+      image: "/docsync.png",
       video: "",
+    },
+    {
+      title: "PDF-RAG",
+      href: "https://github.com/ANNI69/PDF-RAG.git",
+      dates: "March 2025 - April 2025",
+      active: true,
+      description: "PDF RAG is an AI-driven web application that lets users upload PDF documents and ask questions about their content, receiving context-aware answers powered by GPT-4.1 Mini from OpenAI.This tool is built using Next.js, Express.js, and deployed securely on AWS EC2. It’s a practical showcase of Retrieval-Augmented Generation (RAG) architecture, helping users extract meaningful insights from documents in real time.",
+      technologies: [
+        "Next.js",
+        "Typescript",
+        "PostgreSQL",
+        "Prisma",
+        "TailwindCSS",
+        "Stripe",
+        "Shadcn UI",
+        "Magic UI",
+      ],
+      links: [
+        {
+          type: "Source",
+          href: "https://github.com/ANNI69/PDF-RAG.git",
+          icon: <Icons.github className="size-3" />,
+        },
+        {
+          type: "Post",
+          href: "https://x.com/AniruddhNagare/status/1933967594094219269",
+          icon: <Icons.x className="size-3" />,
+        },
+        {
+          type: "Blog",
+          href: "https://nagareaniruddh.vercel.app/blog/pdf-rag",
+          icon: <Icons.blog className="size-3" />,
+        },
+      ],
+      image: "/pdf-rag.jpeg",
+      video:
+        "",
     },
     {
       title: "Video Conferencing App",
       href: "https://github.com/ANNI69/VideoMeet.git",
       dates: "June 2025 - July 2025",
       active: true,
-      description:"Developed a real-time video conferencing application using Next.js, Typescript, and NeoDB. This project allows users to create and join video meetings with features like chat, screen sharing, and user authentication. It showcases the use of GetStream for real-time messaging and clerk for user management.",
+      description: "Developed a real-time video conferencing application using Next.js, Typescript, and NeoDB. This project allows users to create and join video meetings with features like chat, screen sharing, and user authentication. It showcases the use of GetStream for real-time messaging and clerk for user management.",
       technologies: [
         "Next.js",
         "Typescript",
@@ -271,7 +351,7 @@ export const DATA = {
           icon: <Icons.blog className="size-3" />,
         },
       ],
-      image: "https://i.postimg.cc/dVqc254R/vm.png",
+      image: "/meet.png",
       video: "",
     },
     {
@@ -279,7 +359,7 @@ export const DATA = {
       href: "https://github.com/ANNI69/HireFlow-AiRecruiter.git",
       dates: "May 2025 - June 2025",
       active: true,
-      description:"Just in time for the placement season, I built an AI-powered mock interviewer using Vapi (Voice AI) and Firebase Firestore. This tool simulates real interview scenarios by talking, listening, and giving feedback — just like a real interviewer, but on-demand. 🧠💻",
+      description: "Just in time for the placement season, I built an AI-powered mock interviewer using Vapi (Voice AI) and Firebase Firestore. This tool simulates real interview scenarios by talking, listening, and giving feedback — just like a real interviewer, but on-demand. 🧠💻",
       technologies: [
         "Next.js",
         "Typescript",
@@ -311,7 +391,7 @@ export const DATA = {
           icon: <Icons.blog className="size-3" />,
         },
       ],
-      image: "/hireflow-home.png",
+      image: "/ai-recruiter.png",
       video: "",
     },
 
@@ -320,7 +400,7 @@ export const DATA = {
       href: "https://github.com/ANNI69/Grocery-App.git",
       dates: "June 2025 - July 2025",
       active: true,
-      description:"GreenCart is a full-stack shopping application built using the MERN stack — MongoDB, Express.js, React, and Node.js — featuring seamless Stripe integration for secure and efficient transactions" ,
+      description: "GreenCart is a full-stack shopping application built using the MERN stack — MongoDB, Express.js, React, and Node.js — featuring seamless Stripe integration for secure and efficient transactions",
       technologies: [
         "Next.js",
         "Typescript",
@@ -358,44 +438,6 @@ export const DATA = {
         "",
     },
 
-    { 
-      title: "PDF-RAG",
-      href: "https://github.com/ANNI69/PDF-RAG.git",
-      dates: "March 2025 - April 2025",
-      active: true,
-      description:"PDF RAG is an AI-driven web application that lets users upload PDF documents and ask questions about their content, receiving context-aware answers powered by GPT-4.1 Mini from OpenAI.This tool is built using Next.js, Express.js, and deployed securely on AWS EC2. It’s a practical showcase of Retrieval-Augmented Generation (RAG) architecture, helping users extract meaningful insights from documents in real time." ,
-      technologies: [
-        "Next.js",
-        "Typescript",
-        "PostgreSQL",
-        "Prisma",
-        "TailwindCSS",
-        "Stripe",
-        "Shadcn UI",
-        "Magic UI",
-      ],
-      links: [
-        {
-          type: "Source",
-          href: "https://github.com/ANNI69/PDF-RAG.git",
-          icon: <Icons.github className="size-3" />,
-        },
-        {
-          type: "Post",
-          href: "https://x.com/AniruddhNagare/status/1933967594094219269",
-          icon: <Icons.x className="size-3" />,
-        },
-        {
-          type: "Blog",
-          href: "https://nagareaniruddh.vercel.app/blog/pdf-rag",
-          icon: <Icons.blog className="size-3" />,
-        },
-      ],
-      image: "/pdf-rag.png",
-      video:
-        "",
-    },
-    
     {
       title: "UNiShare",
       href: "https://github.com/ANNI69/Unishare.git",
@@ -477,7 +519,7 @@ export const DATA = {
           icon: <Icons.github className="size-3" />,
         },
       ],
-      image: "https://media.licdn.com/dms/image/D4E12AQEIIDCbb5draA/article-cover_image-shrink_720_1280/0/1696065152678?e=2147483647&v=beta&t=vplfPARtNBS22Cj-JVaqLwndsIwkKLcJpAjwNOyphDc",
+      image: "/feedfwd.png",
       video: "",
     },
 
