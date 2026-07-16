@@ -1,0 +1,90 @@
+---
+title: "Building an Automated Server Health-Check Tool with Python and Cron"
+description: "How I built a lightweight Linux monitoring script that checks CPU, memory, disk, and network health, logs anomalies, and runs automatically on a schedule."
+author: "Aniruddh Nagare"
+publishedAt: "2026-07-11"
+tags: ["python", "linux", "networking", "devops", "monitoring"]
+---
+
+# Building an Automated Server Health-Check Tool with Python and Cron
+
+When I started prepping for infrastructure and network operations roles, I kept running into the same gap in my own experience: I'd deployed plenty of applications on AWS and GCP, but I'd never actually built the *monitoring* layer — the thing that watches a server and tells you when something's wrong before a user notices. So I built one.
+
+This post walks through what I built, why I made the choices I did, and what I'd change for a real production environment.
+
+## The problem
+
+A server can fail in a few boring but critical ways: it runs out of memory, its disk fills up, CPU gets pegged, or a network interface silently drops. In a real data center or ops environment, someone (or something) needs to be watching for these conditions continuously — not just when a user complains.
+
+I wanted something that:
+- Checks system health on a schedule, without a human triggering it
+- Flags problems against clear thresholds, not just raw numbers nobody reads
+- Logs everything so there's a history to look back on
+- Is simple enough to actually understand end-to-end, not a black-box tool
+
+## The stack
+
+- **Python 3 + `psutil`** for gathering system metrics (CPU, memory, disk, network interfaces)
+- **Bash** as a wrapper script for execution and basic log rotation
+- **cron** for scheduling — the simplest possible way to make it "automated"
+- **JSON + plain-text logs** for output, since both a human and a script could parse these later
+
+I deliberately kept the stack minimal. It would have been easy to reach for a heavier framework, but the point was to understand what a monitoring tool is actually *doing* under the hood, not to wire together someone else's dashboard.
+
+## How it works
+
+The core script runs four checks:
+
+```python
+def check_cpu():
+    percent = psutil.cpu_percent(interval=1)
+    return {"metric": "cpu_percent", "value": percent, "alert": percent > THRESHOLDS["cpu_percent"]}
+```
+
+Each check returns its raw value plus a boolean `alert` flag, computed against a configurable threshold dictionary:
+
+```python
+THRESHOLDS = {
+    "cpu_percent": 85,
+    "memory_percent": 85,
+    "disk_percent": 90,
+}
+```
+
+Keeping thresholds as a single config block, rather than hardcoding numbers inside each function, was a small decision but it matters — it's the difference between a script you can tune for a new environment in ten seconds and one you have to hunt through to modify.
+
+Every run writes:
+- A summary line to `health_check.log` (human-readable, timestamped)
+- A structured `health_report.json` snapshot (machine-parseable, ready to feed into something else later)
+- A `WARNING` log entry and console output for anything crossing a threshold
+
+## Making it "automated"
+
+A script you have to remember to run isn't really monitoring — it's a manual check with extra steps. The automation piece is genuinely the least glamorous part and the most important:
+
+```bash
+*/5 * * * * /path/to/run_health_check.sh >> /path/to/cron.log 2>&1
+```
+
+One thing I learned building this: **don't trust that cron works just because the syntax looks right.** I initially assumed a correctly-formatted crontab line meant the job was running, but I hadn't accounted for the script needing an absolute path to the virtual environment — cron runs with a minimal environment, not your interactive shell's `PATH`. It silently failed the first time. Checking `cron.log` after the fact, rather than assuming success, caught it.
+
+## Proving the alerting actually works
+
+It's easy to write threshold-checking logic and never actually see it fire. I temporarily set `cpu_percent` to `1` (guaranteed to trigger), ran the script, and confirmed I saw the alert path — both the console warning and the log entry — before setting the threshold back to something realistic. Small step, but it's the difference between code that *should* work and code you've *verified* works.
+
+## What I'd change for production
+
+This is a solid learning project, and I want to be direct about where the line is between "personal project" and "production monitoring system":
+
+- **A single server's local log doesn't scale.** Monitoring 50 servers means centralizing metrics somewhere queryable — this is exactly the problem tools like Prometheus (with `node_exporter`) and Grafana solve, rather than reinventing that pipeline from scratch.
+- **Cron is fragile for anything critical.** A `systemd` timer, or a proper daemon, handles failures and restarts more gracefully than a cron job that silently doesn't run.
+- **A log file isn't an alert.** Real alerting needs to reach a person — email, Slack, PagerDuty — not sit in a file waiting to be read.
+- **No historical trending.** This tool only tells you the current state. Real observability needs time-series data so you can see *when* memory usage started climbing, not just that it's high right now.
+
+## Why this project, specifically
+
+I'm not pretending this replaces a real monitoring stack — it doesn't. What it does show is that I understand what's actually happening underneath tools like that: what metrics matter, why thresholds need to be configurable, why scheduling reliability is its own problem, and why "it logged something" isn't the same as "it alerted someone." That's the gap I was trying to close, and building it end-to-end — rather than reading about how monitoring works — is what actually closed it.
+
+---
+
+*Code for this project is on [GitHub](https://github.com/ANNI69/vpc-health-check.git).*
