@@ -1,196 +1,89 @@
-# Site-to-Site VPN Lab — Build Guide
+---
+title: "Building a Site-to-Site IPSec VPN Lab in Cisco Packet Tracer (and Everything That Broke Along the Way)"
+description: "A hands-on IPSec VPN lab between two simulated sites — and the real simulator quirks, router model limitations, and IOS mode errors I had to work through to get it running."
+date: "2026-06-23"
+tags: ["networking", "cisco", "ipsec", "vpn", "ccna", "packet-tracer"]
+author: "Aniruddh Nagare"
+---
 
-## What you're building
-Two simulated "sites" (Site A and Site B), each with a router and a LAN behind it, connected across a simulated "internet" via an IPSec site-to-site VPN tunnel — so traffic between the two LANs is encrypted, while each site can still separately reach the outside internet.
+# Building a Site-to-Site IPSec VPN Lab in Cisco Packet Tracer
 
-**⚠️ One honest note before you start:** GNS3 itself is free and open-source, but it doesn't ship with Cisco IOS images — those are Cisco's licensed software. You have two realistic paths:
-1. **Cisco Packet Tracer** — free if you register for a Cisco Networking Academy account (free to sign up, no cost), comes with simulated Cisco devices built in, no licensing gray area. **This is the simpler, cleaner path for a resume project** and is what I'd actually recommend given your timeline.
-2. **GNS3 with Cisco IOS/IOSv images** — requires you to legitimately obtain an IOS image (e.g., via a Cisco account if you or your college has access, or GNS3's own free IOSv images where available). Don't download IOS images from random file-sharing sites — that's a real licensing violation, not just a technicality.
+I wanted to understand site-to-site VPNs the way you actually understand something — not by reading a diagram, but by building one, breaking it, and fixing it. So I set up two simulated "sites" in Cisco Packet Tracer, connected them with a plain routed link, and layered an IPSec tunnel on top. It worked in the end, but not on the first, second, or even third try — and honestly, the debugging was where most of the real learning happened.
 
-The steps below work conceptually in either tool — I'll note where Packet Tracer's interface differs from GNS3's.
+## The setup
+
+Two sites, each with a PC behind a switch behind a router, connected via a simulated WAN link:
+
+```
+[Site A: 192.168.1.0/24] -- RouterA === WAN (203.0.113.0/30) === RouterB -- [Site B: 192.168.2.0/24]
+```
+
+The goal: plain routing works first, then IPSec encrypts the LAN-to-LAN traffic across the WAN link without breaking connectivity.
+
+## Problem #1: the router model doesn't support VPN commands at all
+
+I started with 2911 routers — a reasonable default choice, widely used in Cisco labs. First real command, `crypto isakmp policy 10`, and:
+
+```
+% Invalid input detected at '^' marker.
+```
+
+My first instinct was a typo or wrong mode. It wasn't. After digging through Cisco's community forums, the actual answer was simpler and more annoying: **Packet Tracer's 2911 image doesn't support crypto/IPSec commands at all**, regardless of licensing. This isn't a real Cisco IOS limitation — physical 2911 hardware supports VPN fine — it's specifically a Packet Tracer simulation gap. The forums pointed to two models that actually work in the simulator: the older **1841**, or the modern **ISR4321**.
+
+Lesson: when a "well-documented" command fails identically on every line of a config block, check whether the *platform* supports the feature before assuming you mistyped something.
+
+## Problem #2: swapping router models means re-addressing everything
+
+Moving to the ISR4321 wasn't just a drag-and-drop swap — the interface naming changed too. The 2911 uses `GigabitEthernet0/0` and `0/1`; the ISR4321 uses `GigabitEthernet0/0/0` and `0/0/1` (three segments). Every interface command, every static route reference, had to be redone with the new naming. Not difficult, but a good reminder that "the same config" doesn't always port cleanly across hardware models — a detail that matters more once you're not just following a tutorial.
+
+## Problem #3: SHA-256 isn't recognized
+
+With the right router model in place, I hit a new wall on the hash algorithm:
+
+```
+Router(config-isakmp)#hash sha256
+^
+% Invalid input detected at '^' marker.
+```
+
+Modern IOS documentation everywhere uses `sha256` as a standard option. But Packet Tracer's simulated crypto engine, it turns out, only implements the older `sha` keyword (SHA-1) — every working Packet Tracer IPSec example I could find used `hash sha`, none used `sha256`. Swapped it, and the rest of the ISAKMP policy block went through.
+
+## Problem #4: Diffie-Hellman group 14 isn't recognized either
+
+Same story, different line:
+
+```
+Router(config-isakmp)# group 14
+^
+% Invalid input detected at '^' marker.
+```
+
+Group 14 (2048-bit) is the real-world modern baseline for DH groups. Packet Tracer's simulator caps out lower — group 5 (1536-bit) was the strongest supported option that actually worked.
+
+By this point there was a clear pattern: **the simulator implements an older, smaller subset of real IOS crypto capabilities**, and the fix each time was the same — drop to the older/simpler algorithm option, note it, and move on. It's a useful distinction to be able to articulate: this is a Packet Tracer *simulation* constraint, not a real production security decision. In an actual deployment, SHA-1 and group 5 would be considered weak — I'd use SHA-256+ and group 14+ on real hardware.
+
+## Problem #5: "a pre-shared key already exists"
+
+Later, re-running a command I'd already successfully entered earlier produced:
+
+```
+A pre-shared key for address mask 203.0.113.2 255.255.255.255 already exists!
+```
+
+This one wasn't actually an error — it was IOS correctly refusing a duplicate. The key was already configured from an earlier attempt; the fix was simply to *not* re-run it and move on to the next config block, rather than trying to force it through. A good reminder that not every red-looking message means something is broken — sometimes it means a previous step already worked.
+
+## Where it stands
+
+Plain routing between the two sites verified clean (0% packet loss, correct TTL decrement across both router hops) before any crypto config went in — deliberately, so that if the tunnel later failed, I'd know it was an IPSec-specific problem, not a routing problem underneath it. The ISAKMP policy, pre-shared key, transform-set, and crypto map are now in place on both routers, bound to the WAN-facing interface, with the platform-appropriate algorithm choices (`sha`, group 5) instead of the modern defaults that don't exist in this simulator.
+
+*[Note: swap this closing section for your actual final result once you've confirmed `show crypto isakmp sa` shows QM_IDLE and `show crypto ipsec sa` shows non-zero, incrementing encaps/decaps counters — that's the real proof the tunnel is encrypting traffic, not just that ping still works.]*
+
+## What I'd do differently on real hardware
+
+- Use SHA-256 (or SHA-384) instead of SHA-1, and DH group 14+ instead of group 5 — both were simulator ceilings, not real choices
+- Use certificate-based authentication instead of a pre-shared key for anything beyond a lab
+- On AWS specifically, this whole concept maps to Site-to-Site VPN (Customer Gateway + Virtual Private Gateway) or Transit Gateway for VPC-to-VPC — the IPSec fundamentals are the same, the implementation is managed
 
 ---
 
-## Architecture
-
-```
-[Site A LAN: 192.168.1.0/24] -- [Router A] === IPSec Tunnel === [Router B] -- [Site B LAN: 192.168.2.0/24]
-                                     |                              |
-                                [WAN link, e.g. 203.0.113.1]   [WAN link, e.g. 203.0.113.2]
-```
-
-- Router A: LAN interface `192.168.1.1/24`, WAN interface `203.0.113.1/30`
-- Router B: LAN interface `192.168.2.1/24`, WAN interface `203.0.113.2/30`
-- A PC/host on each LAN to test end-to-end connectivity
-
----
-
-## Step 1: Build the topology
-
-**Packet Tracer:** Drag two Generic Routers (e.g., 2911), two switches, and two PCs onto the canvas. Connect: PC1 — Switch1 — RouterA (Gig0/0), RouterA (Gig0/1) — RouterB (Gig0/1) [simulating the WAN link], RouterB (Gig0/0) — Switch2 — PC2.
-
-**GNS3:** Same logical topology using two IOS router nodes, two VPCS (virtual PC) nodes, connected via the built-in switch/link tool.
-
-## Step 2: Basic IP addressing and routing
-
-On **Router A**:
-```
-enable
-configure terminal
-hostname RouterA
-interface GigabitEthernet0/0
- ip address 192.168.1.1 255.255.255.0
- no shutdown
-interface GigabitEthernet0/1
- ip address 203.0.113.1 255.255.255.252
- no shutdown
-exit
-ip route 192.168.2.0 255.255.255.0 203.0.113.2
-```
-
-On **Router B**:
-```
-enable
-configure terminal
-hostname RouterB
-interface GigabitEthernet0/0
- ip address 192.168.2.1 255.255.255.0
- no shutdown
-interface GigabitEthernet0/1
- ip address 203.0.113.2 255.255.255.252
- no shutdown
-exit
-ip route 192.168.1.0 255.255.255.0 203.0.113.1
-```
-
-Configure PC1 with IP `192.168.1.10/24`, gateway `192.168.1.1`, and PC2 with `192.168.2.10/24`, gateway `192.168.2.1`.
-
-**Test before adding VPN:** `ping 192.168.2.10` from PC1 should already succeed (plain, unencrypted routing) — confirm this works first. If basic routing is broken, the VPN layer on top of it will fail for reasons that have nothing to do with IPSec, and you'll waste time debugging the wrong thing.
-
-## Step 3: Define "interesting traffic" (what the VPN should encrypt)
-
-On **Router A**:
-```
-access-list 100 permit ip 192.168.1.0 0.0.0.255 192.168.2.0 0.0.0.255
-```
-
-On **Router B**:
-```
-access-list 100 permit ip 192.168.2.0 0.0.0.255 192.168.1.0 0.0.0.255
-```
-
-This ACL tells the router which traffic should go through the encrypted tunnel (LAN-to-LAN traffic) versus regular routing (everything else).
-
-## Step 4: Configure IKE Phase 1 (ISAKMP) — how the routers authenticate each other and negotiate the tunnel
-
-On **Router A**:
-```
-crypto isakmp policy 10
- encryption aes 256
- hash sha256
- authentication pre-share
- group 14
- lifetime 86400
-exit
-crypto isakmp key VpnLabSecretKey123 address 203.0.113.2
-```
-
-On **Router B** (mirror, pointing back at A):
-```
-crypto isakmp policy 10
- encryption aes 256
- hash sha256
- authentication pre-share
- group 14
- lifetime 86400
-exit
-crypto isakmp key VpnLabSecretKey123 address 203.0.113.1
-```
-
-**Note:** In a real lab, use a stronger pre-shared key and understand that pre-shared keys are the simplest but weakest authentication method — certificate-based auth is what production site-to-site VPNs generally use. Worth mentioning you know this distinction in an interview.
-
-## Step 5: Configure IKE Phase 2 (IPSec transform set) — how the actual data is encrypted
-
-On both routers:
-```
-crypto ipsec transform-set VPN-SET esp-aes 256 esp-sha256-hmac
- mode tunnel
-exit
-```
-
-## Step 6: Create the crypto map and apply it to the WAN interface
-
-On **Router A**:
-```
-crypto map VPN-MAP 10 ipsec-isakmp
- set peer 203.0.113.2
- set transform-set VPN-SET
- match address 100
-exit
-interface GigabitEthernet0/1
- crypto map VPN-MAP
-exit
-```
-
-On **Router B**:
-```
-crypto map VPN-MAP 10 ipsec-isakmp
- set peer 203.0.113.1
- set transform-set VPN-SET
- match address 100
-exit
-interface GigabitEthernet0/1
- crypto map VPN-MAP
-exit
-```
-
-## Step 7: Test the tunnel
-
-From PC1, ping PC2 again (`ping 192.168.2.10`). The first ping or two may drop while the tunnel negotiates — that's normal, not a failure. Then verify the tunnel is actually up (don't just trust that ping working means the encryption is happening):
-
-```
-show crypto isakmp sa
-```
-Should show `QM_IDLE` state — Phase 1 is up.
-
-```
-show crypto ipsec sa
-```
-Look for `#pkts encaps` and `#pkts decaps` counters incrementing — this confirms packets are actually being encrypted/decrypted, not just routed in plaintext.
-
-## Step 8: Verify it's actually encrypted (not just "traffic passes")
-
-This is the step most people skip, and it's the part that proves you understand *why* this matters, not just that you followed steps. If your tool supports packet capture on the WAN link (GNS3 does, via Wireshark integration), capture traffic on the link between the routers while pinging — you should see ESP packets, not visible ICMP payloads. In Packet Tracer, you won't get packet capture, but the `show crypto ipsec sa` counters are your evidence instead.
-
-## Step 9: Document it for GitHub
-
-Even though this lab lives in a simulator (no live "GitHub repo" of running infrastructure like the VPC project), you can still commit:
-- A topology diagram (screenshot from GNS3/Packet Tracer, or redrawn)
-- All router configs (`show running-config` output from both routers, saved as `.txt`)
-- Output of `show crypto isakmp sa` and `show crypto ipsec sa` showing a working tunnel
-- A README explaining what each config block does and why
-
-## Step 10: Troubleshooting commands to know cold before the interview
-
-```
-show crypto isakmp sa       # Phase 1 status
-show crypto ipsec sa        # Phase 2 status, packet counters
-show crypto map             # Crypto map bound to which interface
-debug crypto isakmp         # Live debug of Phase 1 negotiation (use sparingly, verbose)
-debug crypto ipsec          # Live debug of Phase 2 negotiation
-```
-
-Common failure points, worth knowing the *why* not just the fix:
-- Mismatched ISAKMP policy (encryption/hash/DH group must match exactly on both sides) → Phase 1 never completes
-- Mismatched pre-shared key → authentication failure, visible in `debug crypto isakmp`
-- ACL mismatch (traffic defined as "interesting" on one side but not mirrored on the other) → tunnel comes up but specific traffic doesn't trigger it
-- Crypto map not applied to the correct interface → nothing happens at all
-
----
-
-## Interview talking points this project gives you
-- "Walk me through what happens when PC1 pings PC2" — be ready to narrate: routing table match → ACL match ("interesting traffic") → ISAKMP Phase 1 negotiation if tunnel not already up → IPSec Phase 2 SA establishment → packet encrypted and encapsulated → sent to peer → decrypted → delivered to PC2's LAN.
-- "Why pre-shared key vs certificates?" — pre-shared keys are simpler to set up for a lab/small deployment, but don't scale well and are weaker; production site-to-sites (and definitely anything at AWS's scale) lean toward certificate-based or more robust key management.
-- "What would you change for a cloud environment?" — this maps directly to AWS Site-to-Site VPN (Virtual Private Gateway + Customer Gateway) or VPC peering/Transit Gateway for AWS-to-AWS, which is worth mentioning if you're interviewing for a cloud-adjacent role — shows you can connect the on-prem networking concept to the cloud-native equivalent.
-
-That last connection — tying classic IPSec concepts to how AWS implements the same idea — is a strong thing to say out loud in an interview if it comes up naturally. It shows you're not just memorizing Cisco commands in isolation.
+*Full router configs and topology are on [GitHub](https://github.com/ANNI69).*
